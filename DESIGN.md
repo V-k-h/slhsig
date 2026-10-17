@@ -19,7 +19,8 @@ The implementation is in this repository, [V-k-h/slhsig](https://github.com/V-k-
 | Check | Result |
 | --- | --- |
 | NIST ACVP vectors ([ACVP-Server](https://github.com/usnistgov/ACVP-Server) commit 975de31e) | keyGen 120, sigGen 624, sigVer 504 cases; all 12 sets; internal and external interfaces, pure and pre-hash, deterministic and hedged: all pass |
-| Differential vs RustCrypto `slh-dsa` 0.2.0-rc.5 and `fips205` 0.4.1 | Keys, deterministic and hedged signatures byte-identical; mutual verification; one-bit corruption rejected by all three (25 cases per "f" set, 4 per "s" set): pass |
+| Differential vs RustCrypto `slh-dsa` 0.2.0-rc.5 and `fips205` 0.4.1 | Keys, deterministic and hedged signatures byte-identical; mutual verification; one-bit corruption rejected by all three. Local runs: 25 cases per "f" set, 4 per "s" set. Nightly CI: 1,000 per "f" set and 50 per "s" set, 6,300 cases in all: pass |
+| Big-endian | ACVP suite (36 tests, all 12 sets) on `s390x-unknown-linux-gnu` under QEMU in nightly CI: pass, in about 2.6 hours |
 | Harness sanity check | Swapping SHA-256 for SHA-512 in H (categories 3 and 5) fails every SHA2-192f ACVP test |
 | API, unit, integration and doc tests | 60, 16, 2 and 1 tests: pass |
 | Stack budget | All operations, all sets, on 64 KiB; also completes on 16 KiB (macOS arm64) |
@@ -505,7 +506,7 @@ Correctness rests on NIST's ACVP vectors and agreement with two independent impl
 | Stack budget | Every operation on a small-stack thread | No overflow | Every PR |
 | Mutation testing | `cargo-mutants` over the core modules, the API and the integrations. `.cargo/mutants.toml` holds the commands and lists the equivalent mutants, each with the reason it cannot change behavior | No missed mutants outside that list | Before each release |
 | Coverage | `cargo-llvm-cov` on the core modules | All non-debug lines covered | Planned; not yet in CI |
-| Endianness | Full test suite on a big-endian target (`s390x-unknown-linux-gnu` under QEMU) | Same results as little-endian | Nightly |
+| Endianness | ACVP suite on a big-endian target (`s390x-unknown-linux-gnu` under QEMU) | Same results as little-endian | Nightly |
 
 **ACVP details.**
 
