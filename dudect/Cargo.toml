@@ -1,0 +1,11 @@
+[package]
+name = "slhsig-dudect"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "dudect constant-time measurements for slhsig key generation"
+
+[dependencies]
+dudect-bencher = "0.7.0"
+rand_core = "0.10.1"
+slhsig = { path = "..", features = ["all-parameter-sets"] }

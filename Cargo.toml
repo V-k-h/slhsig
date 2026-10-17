@@ -1,0 +1,89 @@
+[package]
+name = "slhsig"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT OR Apache-2.0"
+description = "SLH-DSA (FIPS 205) stateless hash-based signatures, implemented from the standard"
+keywords = ["slh-dsa", "fips205", "sphincs", "post-quantum", "signature"]
+categories = ["cryptography", "no-std"]
+publish = false
+exclude = ["tests/acvp/*.json.gz"]
+
+[workspace]
+members = [".", "testkit", "dudect"]
+exclude = ["fuzz"]
+
+[dependencies]
+sha2 = { version = "0.11.1", default-features = false, features = ["zeroize"] }
+shake = { version = "0.1.0", default-features = false, features = ["zeroize"] }
+rand_core = { version = "0.10.1", default-features = false }
+zeroize = { version = "1.9.1", default-features = false }
+getrandom = { version = "0.4.3", optional = true, default-features = false, features = ["sys_rng"] }
+signature = { version = "3.0.0", optional = true, default-features = false, features = ["rand_core"] }
+serde = { version = "1.0.229", optional = true, default-features = false, features = ["alloc"] }
+
+[dev-dependencies]
+flate2 = "1"
+serde_json = "1"
+sha3 = { version = "0.12.0", default-features = false }
+criterion = { version = "0.8.2", default-features = false }
+signature = { version = "3.0.0", default-features = false }
+getrandom = { version = "0.4.3", default-features = false, features = ["sys_rng"] }
+
+[features]
+default = ["os-rng", "sha2-128f", "shake-128f"]
+# Operating-system entropy via getrandom::SysRng: SigningKey::generate and the
+# hedged `sign` convenience methods.
+os-rng = ["dep:getrandom"]
+# RustCrypto `signature` 3 trait impls: pure signing with the empty context.
+signature-traits = ["dep:signature"]
+# Serialize and deserialize public keys and signatures as raw bytes (never secret keys).
+serde = ["dep:serde"]
+# FIPS 205 internal functions (Algorithms 18-20) with caller-supplied seeds and
+# randomness. For test vectors and differential testing only.
+hazmat = []
+
+shake-128s = []
+shake-128f = []
+shake-192s = []
+shake-192f = []
+shake-256s = []
+shake-256f = []
+sha2-128s = []
+sha2-128f = []
+sha2-192s = []
+sha2-192f = []
+sha2-256s = []
+sha2-256f = []
+all-parameter-sets = [
+    "shake-128s", "shake-128f", "shake-192s", "shake-192f", "shake-256s", "shake-256f",
+    "sha2-128s", "sha2-128f", "sha2-192s", "sha2-192f", "sha2-256s", "sha2-256f",
+]
+
+[[test]]
+name = "integrations"
+required-features = ["signature-traits", "serde", "shake-128f"]
+
+[[test]]
+name = "acvp"
+required-features = ["all-parameter-sets", "hazmat"]
+
+[[test]]
+name = "api"
+required-features = ["all-parameter-sets"]
+
+[[test]]
+name = "stack"
+required-features = ["all-parameter-sets"]
+
+[[bench]]
+name = "slhsig"
+harness = false
+required-features = ["all-parameter-sets", "os-rng"]
+
+[profile.test]
+opt-level = 3
+
+[package.metadata.docs.rs]
+all-features = true

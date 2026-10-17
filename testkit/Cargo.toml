@@ -1,0 +1,13 @@
+[package]
+name = "slhsig-testkit"
+version = "0.0.0"
+edition = "2024"
+publish = false
+description = "Differential tests of slhsig against independent SLH-DSA implementations"
+
+[dependencies]
+slhsig = { path = "..", features = ["all-parameter-sets", "hazmat"] }
+slh-dsa = "=0.2.0-rc.5"
+fips205 = "=0.4.1"
+rand_core = "0.10.1"
+rand_core_06 = { package = "rand_core", version = "0.6.4" }
