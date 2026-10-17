@@ -1,8 +1,10 @@
-name: Nightly
+name: Scheduled
 
 on:
+  # Weekly to keep Actions minutes predictable on a private repository; raise the frequency
+  # (and SLHSIG_DIFF_CASES) once the repository is public.
   schedule:
-    - cron: "17 3 * * *"
+    - cron: "17 3 * * 0"
   workflow_dispatch:
 
 permissions:
@@ -20,7 +22,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: cargo test -p slhsig-testkit --release
         env:
-          SLHSIG_DIFF_CASES: "2000"
+          SLHSIG_DIFF_CASES: "100"
 
   fuzz:
     runs-on: ubuntu-latest
@@ -37,7 +39,7 @@ jobs:
   dudect:
     strategy:
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

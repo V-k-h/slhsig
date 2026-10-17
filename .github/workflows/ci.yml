@@ -30,7 +30,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
+        # macos-latest is arm64, so it also covers aarch64.
+        os: [ubuntu-latest, macos-latest, windows-latest]
         toolchain: [stable, "1.88"]
     runs-on: ${{ matrix.os }}
     steps:
