@@ -9,7 +9,7 @@
 //! `SLHSIG_DIFF_CASES` sets the number of cases per parameter set (CI nightly raises it).
 
 use fips205::traits::{KeyGen, SerDes, Signer as _, Verifier as _};
-use slhsig::{Context, Deterministic, Hedged, ParameterSet, Signature, SigningKey};
+use slhsig::{Context, Deterministic, FaultCheck, Hedged, ParameterSet, Signature, SigningKey};
 use slhsig_testkit::{Cases, Fixed, Fixed06, case_count};
 
 fn seed_for(name: &str) -> u64 {
@@ -36,8 +36,13 @@ macro_rules! differential {
                 let at = |what: &str| format!("{} case {case}: {what}", <P as ParameterSet>::NAME);
 
                 // 1. Key generation from identical seeds (FIPS 205 Algorithm 21 order).
-                let ours = SigningKey::<P, Deterministic>::try_generate(&mut Fixed(&seeds)).unwrap();
-                let ours_hedged = SigningKey::<P, Hedged>::try_generate(&mut Fixed(&seeds)).unwrap();
+                // The fault check never changes the output, so it is off here for speed.
+                let ours = SigningKey::<P, Deterministic>::try_generate(&mut Fixed(&seeds))
+                    .unwrap()
+                    .with_fault_check(FaultCheck::None);
+                let ours_hedged = SigningKey::<P, Hedged>::try_generate(&mut Fixed(&seeds))
+                    .unwrap()
+                    .with_fault_check(FaultCheck::None);
                 let sk_bytes = ours.to_bytes();
                 let vk = ours.verifying_key();
                 let pk_bytes = vk.to_bytes();

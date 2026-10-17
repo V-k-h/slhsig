@@ -115,6 +115,8 @@ fn public_sign<P: ParameterSet>(t: &Value, prehash: &str, addrnd: Option<&[u8]>,
         None => {
             let mut key = SigningKey::<P, Deterministic>::from_slice(&sk).unwrap();
             key.set_usage(usage).unwrap();
+            // The fault check never changes the output; it is tested in tests/api.rs.
+            key.set_fault_check(FaultCheck::None);
             match &digest {
                 Some(d) => key.sign_prehashed(d.as_prehashed(), ctx),
                 None => key.sign(&msg, ctx),
@@ -123,6 +125,8 @@ fn public_sign<P: ParameterSet>(t: &Value, prehash: &str, addrnd: Option<&[u8]>,
         Some(addrnd) => {
             let mut key = SigningKey::<P, Hedged>::from_slice(&sk).unwrap();
             key.set_usage(usage).unwrap();
+            // The fault check never changes the output; it is tested in tests/api.rs.
+            key.set_fault_check(FaultCheck::None);
             let mut rng = FixedRng::new(addrnd);
             match &digest {
                 Some(d) => key.try_sign_prehashed(&mut rng, d.as_prehashed(), ctx),
