@@ -345,4 +345,13 @@ mod tests {
         assert_eq!(gen_len2(24, 4), 3);
         assert_eq!(gen_len2(32, 4), 3);
     }
+
+    /// Algorithm 1 is defined for any lg_w. Other widths reach the loop's boundary cases, which
+    /// lg_w = 4 never does: max_checksum = 8 equals w^3 for w = 2.
+    #[test]
+    fn len2_for_other_widths() {
+        assert_eq!(gen_len2(1, 1), 4);
+        assert_eq!(gen_len2(32, 2), 5);
+        assert_eq!(gen_len2(32, 8), 2);
+    }
 }

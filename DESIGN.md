@@ -21,12 +21,13 @@ The implementation is in this repository, [V-k-h/slhsig](https://github.com/V-k-
 | NIST ACVP vectors ([ACVP-Server](https://github.com/usnistgov/ACVP-Server) commit 975de31e) | keyGen 120, sigGen 624, sigVer 504 cases; all 12 sets; internal and external interfaces, pure and pre-hash, deterministic and hedged: all pass |
 | Differential vs RustCrypto `slh-dsa` 0.2.0-rc.5 and `fips205` 0.4.1 | Keys, deterministic and hedged signatures byte-identical; mutual verification; one-bit corruption rejected by all three (25 cases per "f" set, 4 per "s" set): pass |
 | Harness sanity check | Swapping SHA-256 for SHA-512 in H (categories 3 and 5) fails every SHA2-192f ACVP test |
-| API, unit, integration and doc tests | 56, 15, 2 and 1 tests: pass |
+| API, unit, integration and doc tests | 60, 16, 2 and 1 tests: pass |
 | Stack budget | All operations, all sets, on 64 KiB; also completes on 16 KiB (macOS arm64) |
 | Lints and MSRV | `clippy -D warnings`, `rustfmt`, every feature combination warning-free; builds and passes tests on Rust 1.88 |
-| dudect, key generation | SHA2-128f, 5,000 samples: max \|t\| = 1.32 (one short run; threshold 5) |
+| dudect, key generation | Nightly, 15 minutes each for SHA2-128f, SHAKE-128f, SHA2-192f and SHAKE-256f on x86-64 Linux, arm64 Linux and macOS arm64: max \|t\| between 0.96 and 3.17 over 0.06 to 3.0 million samples; all 12 below the threshold of 5. Highest: SHA2-192f on arm64 Linux, 3.17 over 0.46 million |
 | Speed, Apple M4 Pro | Signing with the default redundant check: SHA2-128f 10.4 ms, SHAKE-128f 31.5 ms (verify-only: 5.4 and 16.1 ms; no check: 5.0 and 15.5 ms). Verification: 0.29 and 0.96 ms |
-| Fuzzing, 15 minutes per target | parse 1,366,369 runs, verify 328,938, sign\_verify 17,741: no crashes, no failing inputs |
+| Fuzzing | Local, 15 minutes per target: parse 1,366,369 runs, verify 328,938, sign\_verify 17,741. Nightly CI, 30 minutes per target: parse 703,606, verify 87,148, sign\_verify 11,590. No crashes, no failing inputs |
+| Mutation testing (`cargo-mutants` 27.1.0) | Core and API: 563 mutants, 357 caught, 206 unviable, none missed. Integrations: 24 mutants, 3 caught, 21 unviable, none missed. The first run left 29 alive: 14 are now killed by new tests (API trait impls, `set_fault_check`, `Signature::from_vec`, the serde error message, `gen_len2` boundaries); 6 disappeared when the treehash stacks were cut to their exact maximum; 9 are equivalent and listed, each with its reason, in `.cargo/mutants.toml` |
 | CI (GitHub Actions) | All 9 jobs pass: lint, tests on Linux, macOS and Windows, MSRV 1.88, direct minimal versions, differential, cargo-deny and cargo-audit, fuzz build |
 
 **Not done yet:** `cargo-vet`, property tests with `proptest`, coverage reporting, OpenSSL 3.5 interoperability tests, continuous fuzzing beyond the nightly runs, and the independent review.
@@ -391,7 +392,7 @@ Timing is handled by construction: secrets only ever enter hash inputs. Faults n
 - **Rules for reviewers.** No branch, loop bound or array index may depend on SK.seed, SK.prf, `opt_rand`, or any PRF output before it is hashed into a public node. No secret comparisons are needed anywhere, so `subtle` is not a dependency.
 - **Hash backends.** SHA-2 and Keccak have no data-dependent branches or table lookups. We rely on the `sha2` and `sha3` crates (including their hardware-accelerated backends) not to add any, and we re-measure them in our own timing tests.
 - **Hedged by default.** Fresh `addrnd` per signature means repeated signing of one message never repeats the computation, which blunts differential power and EM analysis. This is FIPS 205's reason for preferring the hedged variant.
-- **Evidence.** A `dudect-bencher` harness compares fixed versus random secret keys for key generation and signing on each CI platform. A reviewer checklist covers the rules above.
+- **Evidence.** A `dudect-bencher` harness compares fixed versus random secret keys for key generation on each CI platform. Signing is not measured this way: its work depends on the message digest, which is public, so the test would report that variation as a leak. A reviewer checklist covers the rules above.
 
 **Faults**
 
@@ -502,7 +503,7 @@ Correctness rests on NIST's ACVP vectors and agreement with two independent impl
 | Fuzzing | `Signature::try_from` + `verify`; `VerifyingKey` parsing; `Context::new`; `PreHashed::new`; checked `SigningKey::from_bytes` | No panic, no hang over 5 s | Corpus replay per PR; continuous fuzzing nightly |
 | Constant time | `dudect-bencher`: fixed vs random secret key for key generation (signing: see Side channels and faults) | Max \|t\| at most 5 | Nightly: 15 minutes per benchmark on x86-64 Linux, arm64 Linux and macOS |
 | Stack budget | Every operation on a small-stack thread | No overflow | Every PR |
-| Mutation testing | `cargo-mutants` over the core modules | Every surviving mutant is explained or killed by a new test | Before each release |
+| Mutation testing | `cargo-mutants` over the core modules, the API and the integrations. `.cargo/mutants.toml` holds the commands and lists the equivalent mutants, each with the reason it cannot change behavior | No missed mutants outside that list | Before each release |
 | Coverage | `cargo-llvm-cov` on the core modules | All non-debug lines covered | Planned; not yet in CI |
 | Endianness | Full test suite on a big-endian target (`s390x-unknown-linux-gnu` under QEMU) | Same results as little-endian | Nightly |
 

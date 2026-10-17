@@ -15,3 +15,4 @@ follows Semantic Versioning.
 - NIST ACVP tests (keyGen, sigGen, sigVer), differential tests against RustCrypto `slh-dsa`
   and integritychain `fips205`, fuzz targets, a dudect harness, a stack-budget test and
   benchmarks.
+- Mutation-testing configuration (`.cargo/mutants.toml`) listing the equivalent mutants.

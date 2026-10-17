@@ -26,7 +26,8 @@ fn sk_gen<P: ParameterSet>(
 }
 
 /// Algorithm 15: `fors_node(SK.seed, i, z, PK.seed, ADRS)`, computed iteratively as in
-/// `xmss::node`. The address keeps type FORS_TREE and its key pair address throughout.
+/// `xmss::node`, so the stack never holds more than max(z, 1) <= a nodes. The address keeps
+/// type FORS_TREE and its key pair address throughout.
 fn node<P: ParameterSet>(
     sk_seed: &NodeOf<P>,
     seeded: &SeededOf<P>,
@@ -35,8 +36,8 @@ fn node<P: ParameterSet>(
     adrs: &mut Adrs,
 ) -> NodeOf<P> {
     debug_assert!(z as usize <= P::A);
-    let mut stack = [NodeOf::<P>::zeroed(); MAX_A + 1];
-    let mut heights = [0u32; MAX_A + 1];
+    let mut stack = [NodeOf::<P>::zeroed(); MAX_A];
+    let mut heights = [0u32; MAX_A];
     let mut top = 0usize;
 
     let first = i << z;

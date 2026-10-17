@@ -229,3 +229,91 @@ fn redundant_is_the_default_fault_check() {
         SigningKey::<Shake128f>::from_bytes(&key::<Shake128f, Hedged>().to_bytes()).unwrap();
     assert_eq!(imported.fault_check(), FaultCheck::Redundant);
 }
+
+fn hash_of<T: core::hash::Hash>(value: &T) -> u64 {
+    use core::hash::Hasher;
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    value.hash(&mut hasher);
+    hasher.finish()
+}
+
+#[test]
+fn set_fault_check_takes_effect() {
+    let mut sk = key::<Shake128f, Hedged>();
+    sk.set_fault_check(FaultCheck::None);
+    assert_eq!(sk.fault_check(), FaultCheck::None);
+    sk.set_fault_check(FaultCheck::Verify);
+    assert_eq!(sk.fault_check(), FaultCheck::Verify);
+}
+
+#[test]
+fn error_messages() {
+    let errors = [
+        Error::ContextTooLong,
+        Error::InvalidKeyLength,
+        Error::InvalidSignatureLength,
+        Error::InvalidDigestLength,
+        Error::PreHashTooWeak,
+        Error::UsageMismatch,
+        Error::InconsistentKey,
+        Error::Entropy,
+        Error::SelfCheckFailed,
+    ];
+    let messages: Vec<String> = errors.iter().map(ToString::to_string).collect();
+    for (i, message) in messages.iter().enumerate() {
+        assert!(!message.is_empty());
+        assert!(!messages[..i].contains(message), "duplicate message {message:?}");
+    }
+    assert_eq!(Error::ContextTooLong.to_string(), "context string longer than 255 bytes");
+    assert_eq!(VerificationError.to_string(), "signature verification failed");
+}
+
+#[test]
+fn verifying_key_equality_hash_and_debug() {
+    let vk = key::<Shake128f, Hedged>().verifying_key();
+    let bytes = vk.to_bytes();
+    let same = VerifyingKey::<Shake128f>::from_slice(bytes.as_ref()).unwrap();
+    assert_eq!(same, vk);
+    assert_eq!(hash_of(&same), hash_of(&vk));
+
+    // Flip one bit of PK.seed, then one bit of PK.root: each alone makes the keys differ.
+    for at in [0, Shake128f::N] {
+        let mut other = bytes.as_ref().to_vec();
+        other[at] ^= 1;
+        let other = VerifyingKey::<Shake128f>::from_slice(&other).unwrap();
+        assert_ne!(other, vk);
+        assert_ne!(hash_of(&other), hash_of(&vk));
+    }
+
+    let hex: String = bytes.as_ref().iter().map(|b| format!("{b:02x}")).collect();
+    assert_eq!(format!("{vk:?}"), format!("VerifyingKey<SLH-DSA-SHAKE-128f>({hex})"));
+}
+
+#[test]
+fn signature_encodings_hash_and_debug() {
+    let sk = key::<Shake128f, Deterministic>();
+    let sig = sk.sign(b"m", Context::EMPTY).unwrap();
+    assert_eq!(sig.as_ref(), sig.as_bytes());
+    assert_eq!(sig.as_bytes().len(), Shake128f::SIG_BYTES);
+
+    let from_vec = Signature::<Shake128f>::from_vec(sig.as_bytes().to_vec()).unwrap();
+    assert_eq!(from_vec, sig);
+    assert_eq!(hash_of(&from_vec), hash_of(&sig));
+    for len in [0, Shake128f::SIG_BYTES - 1, Shake128f::SIG_BYTES + 1] {
+        assert_eq!(
+            Signature::<Shake128f>::from_vec(vec![0; len]).err(),
+            Some(Error::InvalidSignatureLength)
+        );
+    }
+
+    let other = sk.sign(b"n", Context::EMPTY).unwrap();
+    assert_ne!(other, sig);
+    assert_ne!(hash_of(&other), hash_of(&sig));
+
+    // Debug shows the randomizer R and the length, not the whole signature.
+    let r: String = sig.as_bytes()[..Shake128f::N].iter().map(|b| format!("{b:02x}")).collect();
+    assert_eq!(
+        format!("{sig:?}"),
+        format!("Signature<SLH-DSA-SHAKE-128f>(R = {r}, {} bytes)", Shake128f::SIG_BYTES)
+    );
+}

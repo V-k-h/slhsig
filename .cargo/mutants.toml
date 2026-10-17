@@ -1,0 +1,43 @@
+# cargo-mutants configuration.
+#
+# Core algorithms and API (the "s" sets are skipped to keep the run near 15 minutes; they share
+# every code path with the "f" sets and run in the normal test suite):
+#
+#   cargo mutants --features "all-parameter-sets hazmat" --exclude src/api/integrations.rs \
+#     -j 4 --timeout-multiplier 3 -- --lib --test acvp --test api --test stack \
+#     -- --skip 128s:: --skip 192s:: --skip 256s::
+#
+# signature-trait and serde integrations:
+#
+#   cargo mutants --features "signature-traits serde shake-128f" --file src/api/integrations.rs \
+#     -- --test integrations
+#
+# Every mutant below survives because it cannot change behavior. Each pattern names exactly one
+# mutant, line and column included: if the code moves, the mutant shows up as missed again and
+# must be re-checked, instead of a loose pattern silently hiding a different one.
+exclude_re = [
+    # `(total << 8) | byte` and `(total << 8) ^ byte` are equal: the shift leaves the low 8 bits
+    # zero, so OR and XOR with a byte agree.
+    '^src/encoding\.rs:11:30: replace \| with \^ in to_int$',
+    '^src/encoding\.rs:47:34: replace \| with \^ in base_2b$',
+
+    # The odd-child branch of the auth-path walk: there the tree index is odd, so
+    # (index - 1) / 2 and index / 1 / 2 are the same integer.
+    '^src/fors\.rs:149:56: replace - with / in pk_from_sig$',
+    '^src/xmss\.rs:113:52: replace - with / in pk_from_sig$',
+
+    # `if j < d - 1` in ht_sign skips the root of the top layer, which nothing reads. Each of
+    # these makes the condition always true, so the last iteration computes that unused root:
+    # slower, same signature.
+    '^src/hypertree\.rs:45:14: replace < with <= in sign$',
+    '^src/hypertree\.rs:45:21: replace - with \+ in sign$',
+    '^src/hypertree\.rs:45:21: replace - with / in sign$',
+
+    # Checksum shift (8 - (len2 * lg_w) mod 8) mod 8 with len2 * lg_w = 12 for every approved
+    # parameter set: 8 - 4 and 8 + 4 are both 4 mod 8.
+    '^src/wots\.rs:51:17: replace - with \+ in digits$',
+
+    # Zeroizing the secret seeds on drop cannot be observed from safe Rust, and the crate
+    # forbids unsafe code. Covered by review and by the zeroize crate's own guarantees.
+    '^src/api/keys\.rs:114:9: replace <impl Drop for SecretSeeds<P>>::drop with \(\)$',
+]

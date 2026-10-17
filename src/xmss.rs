@@ -10,7 +10,8 @@ use crate::wots;
 /// Computed iteratively (treehash) instead of recursively. The leaves 2^z * i .. 2^z * (i+1)
 /// are generated left to right, and two nodes at the same height are combined as soon as
 /// both exist. Every H call gets the same (height, index) address and the same inputs as in
-/// the recursive pseudocode, so the result is identical. The stack holds at most z + 1 nodes.
+/// the recursive pseudocode, so the result is identical. After c leaves the stack holds one
+/// node per set bit of c, so it never holds more than max(z, 1) <= h' nodes.
 pub(crate) fn node<P: ParameterSet>(
     sk_seed: &NodeOf<P>,
     seeded: &SeededOf<P>,
@@ -19,8 +20,8 @@ pub(crate) fn node<P: ParameterSet>(
     adrs: &mut Adrs,
 ) -> NodeOf<P> {
     debug_assert!(z as usize <= P::HP);
-    let mut stack = [NodeOf::<P>::zeroed(); MAX_HP + 1];
-    let mut heights = [0u32; MAX_HP + 1];
+    let mut stack = [NodeOf::<P>::zeroed(); MAX_HP];
+    let mut heights = [0u32; MAX_HP];
     let mut top = 0usize;
 
     let first = i << z;

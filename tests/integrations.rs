@@ -32,6 +32,11 @@ fn serde_round_trips_public_values_only() {
     let sig_back: Signature<Shake128f> = serde_json::from_str(&sig_json).unwrap();
     assert_eq!(sig_back, sig);
 
-    // Wrong lengths are rejected, not truncated or padded.
-    assert!(serde_json::from_str::<VerifyingKey<Shake128f>>("[1,2,3]").is_err());
+    // Wrong lengths are rejected, not truncated or padded, with a message naming the problem.
+    let err = serde_json::from_str::<VerifyingKey<Shake128f>>("[1,2,3]").unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "invalid length 3, expected SLH-DSA bytes of the parameter set's exact length at line 1 column 7"
+    );
+    assert!(serde_json::from_str::<Signature<Shake128f>>("[1,2,3]").is_err());
 }
