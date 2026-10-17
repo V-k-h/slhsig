@@ -11,13 +11,19 @@
 //! test would therefore report that public variation as a leak.
 //!
 //! Run with `cargo run --release -p slhsig-dudect -- --continuous keygen_shake128f`, or without
-//! arguments for one pass over every benchmark. |t| values above 5 indicate a leak.
+//! arguments for one pass over every benchmark. A max |t| above 5 indicates a leak; values below
+//! 5 only mean no leak was found at the sample size reached (dudect's "(5/tau)^2" column
+//! estimates how many samples a leak of the observed size would need).
 
 use dudect_bencher::{BenchRng, Class, CtRunner, ctbench_main};
 use rand_core::Rng;
 use slhsig::*;
 
-const SAMPLES: usize = 5_000;
+/// Samples per pass: `SLHSIG_DUDECT_SAMPLES`, default 5,000. In `--continuous` mode dudect keeps
+/// running passes and accumulating statistics until stopped.
+fn samples() -> usize {
+    std::env::var("SLHSIG_DUDECT_SAMPLES").ok().and_then(|v| v.parse().ok()).unwrap_or(5_000)
+}
 
 struct Seeds<'a>(&'a [u8]);
 
@@ -41,8 +47,9 @@ impl rand_core::TryCryptoRng for Seeds<'_> {}
 
 fn keygen<P: ParameterSet>(runner: &mut CtRunner, rng: &mut BenchRng) {
     let n = P::N;
-    let mut inputs = Vec::with_capacity(SAMPLES);
-    for _ in 0..SAMPLES {
+    let samples = samples();
+    let mut inputs = Vec::with_capacity(samples);
+    for _ in 0..samples {
         let mut seeds = vec![0u8; 3 * n];
         let class = if rng.next_u32() & 1 == 0 {
             seeds[..2 * n].fill(0x11);

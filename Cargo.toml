@@ -77,6 +77,14 @@ required-features = ["all-parameter-sets"]
 name = "stack"
 required-features = ["all-parameter-sets"]
 
+[[example]]
+name = "running_example"
+required-features = ["shake-128f"]
+
+[[example]]
+name = "signing_service"
+required-features = ["os-rng", "sha2-128f"]
+
 [[bench]]
 name = "slhsig"
 harness = false

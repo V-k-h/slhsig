@@ -35,9 +35,13 @@ impl Cases {
     }
 }
 
-/// Number of cases per parameter set: `SLHSIG_DIFF_CASES`, or `default`.
-pub fn case_count(default: usize) -> usize {
-    std::env::var("SLHSIG_DIFF_CASES").ok().and_then(|v| v.parse().ok()).unwrap_or(default)
+/// Number of cases for one parameter set, or `default` when the variable is unset.
+///
+/// The "s" sets sign about 10 to 20 times slower than the "f" sets, so they have their own knob:
+/// `SLHSIG_DIFF_CASES` sets the count for "f" sets and `SLHSIG_DIFF_CASES_S` for "s" sets.
+pub fn case_count(name: &str, default: usize) -> usize {
+    let var = if name.ends_with('s') { "SLHSIG_DIFF_CASES_S" } else { "SLHSIG_DIFF_CASES" };
+    std::env::var(var).ok().and_then(|v| v.parse().ok()).unwrap_or(default)
 }
 
 /// Replays fixed bytes through `rand_core` 0.10 (slhsig, RustCrypto `slh-dsa`).

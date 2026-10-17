@@ -6,7 +6,8 @@
 //! 3. hedged signatures with the same addrnd are byte-identical in all three;
 //! 4. each implementation accepts the others' signatures and rejects a one-bit corruption.
 //!
-//! `SLHSIG_DIFF_CASES` sets the number of cases per parameter set (CI nightly raises it).
+//! `SLHSIG_DIFF_CASES` and `SLHSIG_DIFF_CASES_S` set the number of cases per "f" and "s"
+//! parameter set (the scheduled CI job raises both).
 
 use fips205::traits::{KeyGen, SerDes, Signer as _, Verifier as _};
 use slhsig::{Context, Deterministic, FaultCheck, Hedged, ParameterSet, Signature, SigningKey};
@@ -25,7 +26,7 @@ macro_rules! differential {
             type P = $ours;
             let n = <P as ParameterSet>::N;
             let mut cases = Cases::new(seed_for(stringify!($name)));
-            for case in 0..case_count($default) {
+            for case in 0..case_count(<P as ParameterSet>::NAME, $default) {
                 let seeds = cases.bytes(3 * n);
                 let msg_len = cases.len(2048);
                 let msg = cases.bytes(msg_len);

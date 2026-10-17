@@ -17,6 +17,9 @@ let sig = sk.sign(b"message", ctx)?;               // signed twice and compared 
 vk.verify(b"message", ctx, &sig)?;
 ```
 
+Design, threat model and verification status: [DESIGN.md](DESIGN.md). A step-by-step walk
+through signing and verification: [docs/slides](docs/slides/slh-dsa-sign-verify.pdf).
+
 ## What it implements
 
 - All 12 FIPS 205 parameter sets, each a type behind a Cargo feature.

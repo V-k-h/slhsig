@@ -1,0 +1,83 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  differential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test -p slhsig-testkit --release
+        env:
+          SLHSIG_DIFF_CASES: "1000"
+          SLHSIG_DIFF_CASES_S: "50"
+
+  fuzz:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [parse, verify, sign_verify]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - run: cargo install --locked cargo-fuzz
+      # Keep the corpus between runs so coverage accumulates night over night.
+      - uses: actions/cache@v4
+        with:
+          path: fuzz/corpus/${{ matrix.target }}
+          key: fuzz-corpus-${{ matrix.target }}-${{ github.run_id }}
+          restore-keys: fuzz-corpus-${{ matrix.target }}-
+      - run: cd fuzz && cargo fuzz run ${{ matrix.target }} -- -max_total_time=1800
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-artifacts-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}
+
+  dudect:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
+        bench: [keygen_sha2_128f, keygen_shake128f, keygen_sha2_192f, keygen_shake256f]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build --release -p slhsig-dudect
+      # Accumulate statistics for 15 minutes, then fail if max |t| exceeds 5.
+      - name: dudect ${{ matrix.bench }}
+        shell: bash
+        run: |
+          perl -e 'alarm shift; exec @ARGV' 900 \
+            target/release/slhsig-dudect --continuous ${{ matrix.bench }} > dudect.log 2>&1 || true
+          tail -n 3 dudect.log
+          python3 - <<'PY'
+          import re, sys
+          ts = [float(t) for t in re.findall(r"max t = ([+-]?[0-9.]+)", open("dudect.log").read())]
+          if not ts:
+              sys.exit("dudect produced no measurements")
+          t = abs(ts[-1])
+          print(f"final max |t| = {t:.3f} over {len(ts)} reports")
+          sys.exit(1 if t > 5 else 0)
+          PY
+
+  big-endian:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo install --locked cross
+      - run: cross test --target s390x-unknown-linux-gnu --all-features --test acvp
